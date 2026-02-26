@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C++ 强壮性检查</title>
+  <!-- 字体与图标库（保持不变，通过 CDN 引入） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <!-- CodeMirror 核心与 C++ 模式、主题（保持不变） -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/eclipse.min.css">
+  <!-- 内联样式：液态玻璃风格 + 深色模式变量 -->
+  <style>
+    /* ===== 全局变量 ===== */
+    :root {
+      --bg-gradient-start: rgba(180, 220, 250, 0.6);
+      --bg-gradient-mid: rgba(220, 240, 255, 0.3);
+      --bg-gradient-end: transparent;
+      --bg-linear-start: #d9e8f5;
+      --bg-linear-end: #b5d0e8;
+      --glass-bg: rgba(255, 255, 255, 0.2);
+      --glass-border: rgba(255, 255, 255, 0.45);
+      --glass-highlight: rgba(255, 255, 255, 0.7);
+      --text-primary: #092033;
+      --text-secondary: #1e3e5c;
+      --text-soft: #13324b;
+      --score-color: #092c44;
+      --icon-color: #1f4970;
+      --cm-bg: rgba(255, 255, 255, 0.3);
+      --cm-gutter-bg: rgba(255, 255, 255, 0.2);
+      --cm-border: rgba(255, 255, 255, 0.7);
+      --btn-bg: rgba(255, 255, 255, 0.3);
+      --btn-hover: rgba(255, 255, 255, 0.55);
+      --badge-bg: rgba(255, 255, 255, 0.35);
+      --badge-active: rgba(210, 240, 255, 0.7);
+    }
+
+    body.dark-mode {
+      --bg-gradient-start: rgba(10, 30, 50, 0.8);
+      --bg-gradient-mid: rgba(20, 40, 60, 0.6);
+      --bg-gradient-end: #0a1a2a;
+      --bg-linear-start: #1b2c3f;
+      --bg-linear-end: #0f1e2f;
+      --glass-bg: rgba(0, 10, 20, 0.3);
+      --glass-border: rgba(80, 140, 200, 0.3);
+      --glass-highlight: rgba(140, 200, 255, 0.2);
+      --text-primary: #d6eaff;
+      --text-secondary: #b0d0f0;
+      --text-soft: #b0d0f0;
+      --score-color: #c0e0ff;
+      --icon-color: #9ac0e0;
+      --cm-bg: rgba(20, 30, 45, 0.6);
+      --cm-gutter-bg: rgba(30, 40, 55, 0.7);
+      --cm-border: rgba(100, 160, 220, 0.3);
+      --btn-bg: rgba(30, 60, 90, 0.4);
+      --btn-hover: rgba(50, 90, 130, 0.6);
+      --badge-bg: rgba(30, 60, 90, 0.5);
+      --badge-active: rgba(20, 80, 140, 0.7);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 30% 30%, var(--bg-gradient-start), var(--bg-gradient-mid) 60%, var(--bg-gradient-end)),
+                  linear-gradient(145deg, var(--bg-linear-start) 0%, var(--bg-linear-end) 100%);
+      background-attachment: fixed;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      backdrop-filter: blur(2px);
+      transition: background 0.3s ease;
+      color: var(--text-primary);
+    }
+
+    /* ===== 玻璃面板 ===== */
+    .glass-panel {
+      width: 100%;
+      max-width: 1300px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      border-radius: 3.5rem 3.5rem 2.8rem 2.8rem;
+      box-shadow: 0 25px 50px -10px rgba(0, 30, 60, 0.25),
+                  inset 0 0 0 1px var(--glass-highlight),
+                  inset 0 2px 5px var(--glass-highlight);
+      padding: 2.2rem 2.5rem;
+      transition: all 0.3s ease;
+      border: 1px solid var(--glass-border);
+    }
+
+    /* 标题区 */
+    .title-section {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid var(--glass-highlight);
+    }
+
+    .title-section h1 {
+      font-weight: 550;
+      font-size: 2.2rem;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--text-secondary), #18344b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 2px 5px var(--glass-highlight);
+      flex: 1;
+    }
+
+    .code-badge {
+      background: var(--badge-bg);
+      backdrop-filter: blur(8px);
+      padding: 0.5rem 1.2rem;
+      border-radius: 100px;
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--icon-color);
+      border: 1px solid var(--glass-highlight);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* 设置栏 */
+    .settings-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      align-items: center;
+      background: var(--glass-bg);
+      padding: 0.8rem 1.5rem;
+      border-radius: 3rem;
+      margin-bottom: 1.8rem;
+      border: 1px solid var(--glass-highlight);
+      backdrop-filter: blur(4px);
+    }
+
+    .setting-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+
+    .glass-select {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-highlight);
+      border-radius: 2rem;
+      padding: 0.4rem 1.2rem;
+      font-family: 'Inter', sans-serif;
+      color: var(--text-primary);
+      backdrop-filter: blur(4px);
+      cursor: pointer;
+      outline: none;
+    }
+
+    .glass-select option {
+      background: rgba(30, 50, 70, 0.9);
+      color: #fff;
+    }
+
+    .dark-toggle {
+      margin-left: auto;
+    }
+
+    .glass-icon-btn {
+      background: var(--btn-bg);
+      border: 1px solid var(--glass-highlight);
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--icon-color);
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      transition: 0.2s;
+      font-size: 1.1rem;
+    }
+
+    .glass-icon-btn:hover {
+      background: var(--btn-hover);
+      transform: scale(1.05);
+    }
+
+    /* 主网格布局 */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.8fr 1.2fr;
+      gap: 1.8rem;
+      margin: 1.2rem 0 1.8rem;
+    }
+
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* 代码编辑器包装 */
+    .code-wrapper {
+      background: var(--glass-bg);
+      border-radius: 2rem;
+      padding: 1.2rem;
+      box-shadow: inset 0 1px 3px var(--glass-highlight), 0 8px 20px rgba(0, 30, 50, 0.1);
+      backdrop-filter: blur(6px);
+      border: 1px solid var(--glass-highlight);
+    }
+
+    .code-header {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 0.8rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .code-header i {
+      background: var(--glass-bg);
+      border-radius: 50%;
+      padding: 0.5rem;
+      font-size: 1.2rem;
+    }
+
+    /* CodeMirror 自定义样式 */
+    .CodeMirror {
+      height: auto;
+      min-height: 280px;
+      background: var(--cm-bg) !important;
+      border-radius: 1.5rem;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.95rem;
+      border: 1.5px solid var(--cm-border);
+      backdrop-filter: blur(4px);
+      color: var(--text-primary);
+    }
+
+    .CodeMirror-gutters {
+      background: var(--cm-gutter-bg) !important;
+      border-right: 1px solid var(--glass-highlight);
+      border-radius: 1.5rem 0 0 1.5rem;
+    }
+
+    .CodeMirror-linenumber {
+      color: var(--text-secondary) !important;
+    }
+
+    /* 深色模式语法高亮覆盖 */
+    body.dark-mode .cm-s-eclipse span.cm-keyword { color: #ff8bff; font-weight: bold; }
+    body.dark-mode .cm-s-eclipse span.cm-string { color: #b0e060; }
+    body.dark-mode .cm-s-eclipse span.cm-comment { color: #a0c0a0; }
+    body.dark-mode .cm-s-eclipse span.cm-type { color: #ffb0b0; }
+    body.dark-mode .cm-s-eclipse span.cm-preprocessor { color: #b0c0ff; }
+    body.dark-mode .cm-s-eclipse span.cm-variable { color: #d0e0ff; }
+    body.dark-mode .cm-s-eclipse span.cm-number { color: #c0e0b0; }
+
+    /* 模拟输出卡片 */
+    .output-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border-radius: 2rem;
+      padding: 1.2rem 1.5rem;
+      box-shadow: 0 15px 30px -10px rgba(0,30,60,0.2), inset 0 1px 2px var(--glass-highlight);
+      border: 1px solid var(--glass-highlight);
+    }
+
+    .output-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 1rem;
+      color: var(--text-soft);
+      font-weight: 550;
+      font-size: 1.1rem;
+    }
+
+    .output-content {
+      background: rgba(0, 20, 40, 0.1);
+      border-radius: 1.2rem;
+      padding: 1rem 1.3rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      border: 1px solid var(--glass-highlight);
+      min-height: 100px;
+      max-height: 150px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* 右侧结果卡片 */
+    .result-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border-radius: 2.2rem;
+      padding: 1.8rem 1.5rem;
+      box-shadow: 0 15px 30px -10px rgba(0,30,60,0.2), inset 0 1px 2px var(--glass-highlight);
+      border: 1px solid var(--glass-highlight);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 1.6rem;
+      color: var(--text-soft);
+      font-weight: 550;
+      font-size: 1.25rem;
+    }
+
+    .gauge-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--glass-bg);
+      padding: 1rem 1.5rem;
+      border-radius: 2rem;
+      margin-bottom: 1.8rem;
+      border: 1px solid var(--glass-highlight);
+    }
+
+    .strength-score {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .score-label {
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+
+    .score-value {
+      font-size: 2.4rem;
+      font-weight: 600;
+      line-height: 1;
+      color: var(--score-color);
+      text-shadow: 0 2px 5px var(--glass-highlight);
+    }
+
+    .score-max {
+      font-size: 0.9rem;
+      opacity: 0.6;
+    }
+
+    .glowing-ring {
+      width: 55px;
+      height: 55px;
+      border-radius: 100%;
+      background: conic-gradient(from 120deg, #5aa9d9 0deg 270deg, rgba(255,255,255,0.4) 270deg 360deg);
+      border: 3px solid var(--glass-highlight);
+      box-shadow: 0 0 15px #7abfe0;
+      transform: rotate(-90deg);
+      transition: background 0.3s;
+    }
+
+    .issues-list {
+      flex: 1;
+      list-style: none;
+      margin: 0.5rem 0 1.2rem;
+      max-height: 240px;
+      overflow-y: auto;
+      padding-right: 0.3rem;
+    }
+
+    .issues-list li {
+      background: var(--glass-bg);
+      margin: 0.6rem 0;
+      padding: 0.75rem 1rem;
+      border-radius: 1.5rem;
+      font-size: 0.9rem;
+      font-weight: 450;
+      backdrop-filter: blur(2px);
+      border: 1px solid var(--glass-highlight);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: var(--text-primary);
+    }
+
+    .standard-badge {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 1rem 0 1.4rem;
+    }
+
+    .std-item {
+      background: var(--badge-bg);
+      backdrop-filter: blur(4px);
+      padding: 0.4rem 1.2rem;
+      border-radius: 40px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid var(--glass-highlight);
+      color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .std-item.active {
+      background: var(--badge-active);
+      box-shadow: 0 0 12px var(--glass-highlight);
+    }
+
+    /* 底部按钮 */
+    .actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 0.5rem;
+    }
+
+    .glass-button {
+      background: var(--btn-bg);
+      backdrop-filter: blur(12px);
+      border: 1.5px solid var(--glass-highlight);
+      padding: 0.9rem 2.2rem;
+      border-radius: 3rem;
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: 0.2s;
+      box-shadow: 0 5px 15px rgba(0, 20, 40, 0.1);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .glass-button:hover {
+      background: var(--btn-hover);
+      border-color: var(--glass-highlight);
+      transform: scale(1.02);
+    }
+
+    .glass-button.small {
+      padding: 0.6rem 1.5rem;
+      font-size: 0.9rem;
+    }
+
+    .glass-button.secondary {
+      background: rgba(220, 240, 255, 0.15);
+    }
+
+    /* 滚动条 */
+    .issues-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    .issues-list::-webkit-scrollbar-track {
+      background: var(--glass-bg);
+      border-radius: 20px;
+    }
+    .issues-list::-webkit-scrollbar-thumb {
+      background: var(--glass-highlight);
+      border-radius: 20px;
+    }
+
+    /* 响应式 */
+    @media (max-width: 950px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .settings-bar { flex-direction: column; align-items: flex-start; }
+      .dark-toggle { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="glass-panel">
+    <!-- 标题行 -->
+    <div class="title-section">
+      <h1><i class="fa-regular fa-cube" style="margin-right: 12px;"></i>C++ 强健性检查</h1>
+      <div class="code-badge">
+        <i class="fa-regular fa-file-code"></i> <span>ISO/IEC 14882</span> <i class="fa-regular fa-circle-check"></i>
+      </div>
+    </div>
+
+    <!-- 设置栏：版本、编译器、深色模式 -->
+    <div class="settings-bar">
+      <div class="setting-item">
+        <label for="cppVersion"><i class="fa-regular fa-code-branch"></i> C++版本</label>
+        <select id="cppVersion" class="glass-select">
+          <option value="c++11">C++11</option>
+          <option value="c++14">C++14</option>
+          <option value="c++17" selected>C++17</option>
+          <option value="c++20">C++20</option>
+          <option value="c++23">C++23</option>
+        </select>
+      </div>
+      <div class="setting-item">
+        <label for="compiler"><i class="fa-regular fa-microchip"></i> 编译器</label>
+        <select id="compiler" class="glass-select">
+          <option value="gcc" selected>GCC</option>
+          <option value="clang">Clang</option>
+          <option value="msvc">MSVC</option>
+        </select>
+      </div>
+      <div class="setting-item dark-toggle">
+        <label for="darkModeToggle"><i class="fa-regular fa-moon"></i> 深色模式</label>
+        <button id="darkModeToggle" class="glass-icon-btn" aria-label="切换深色模式">
+          <i class="fa-regular fa-sun"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 主网格：左侧（编辑器+输出），右侧报告 -->
+    <div class="main-grid">
+      <!-- 左侧列 -->
+      <div class="left-col">
+        <!-- 代码编辑器区域 -->
+        <div class="code-wrapper">
+          <div class="code-header">
+            <i class="fa-regular fa-keyboard"></i> <span>源代码</span>
+            <span style="flex:1; text-align: right; font-size: 0.85rem; opacity:0.6;">实时检查</span>
+          </div>
+          <textarea id="codeInput">#include &lt;iostream&gt;
+#include &lt;vector&gt;
+using namespace std;
+
+int main() {
+    int* p = new int(42);
+    vector&lt;int&gt; v;
+    v.push_back(10);
+    cout &lt;&lt; "value: " &lt;&lt; *p &lt;&lt; endl;
+    // 忘记 delete p
+    return 0;
+}</textarea>
+        </div>
+
+        <!-- 模拟输出卡片 -->
+        <div class="output-card">
+          <div class="output-header">
+            <i class="fa-regular fa-terminal"></i> 模拟输出
+            <button class="glass-button small" id="runSimBtn" style="margin-left: auto; padding: 0.3rem 1.2rem;"><i class="fa-regular fa-play"></i> 模拟运行</button>
+          </div>
+          <div class="output-content" id="simOutput">点击「模拟运行」查看输出</div>
+        </div>
+      </div>
+
+      <!-- 右侧报告面板 -->
+      <div class="result-panel">
+        <div class="result-header">
+          <i class="fa-regular fa-clipboard"></i> 检查报告
+          <span style="font-size: 0.75rem; background: rgba(255,255,255,0.4); padding: 0.2rem 0.8rem; border-radius: 50px; margin-left: auto;">实时</span>
+        </div>
+
+        <div class="gauge-container">
+          <div class="strength-score">
+            <span class="score-label">强壮指数</span>
+            <span class="score-value" id="scoreDisplay">73</span><span class="score-max">/100</span>
+          </div>
+          <div class="glowing-ring" id="gaugeRing"></div>
+        </div>
+
+        <ul class="issues-list" id="issuesList">
+          <li class="list-placeholder"><i class="fa-regular fa-circle-check" style="color:#1d6f2e;"></i> 正在分析代码…</li>
+        </ul>
+
+        <div class="standard-badge" id="standardBadges">
+          <span class="std-item" data-std="c++11"><i class="fa-regular fa-star"></i> C++11</span>
+          <span class="std-item" data-std="c++14"><i class="fa-regular fa-star"></i> C++14</span>
+          <span class="std-item" data-std="c++17"><i class="fa-regular fa-star"></i> C++17</span>
+          <span class="std-item" data-std="c++20"><i class="fa-regular fa-star"></i> C++20</span>
+        </div>
+        
+        <div style="margin-top: 0.6rem; font-size: 0.75rem; opacity: 0.65; display: flex; gap: 15px; color: #0b2c41;">
+          <i class="fa-regular fa-lightbulb"></i> 检测内存、异常安全、未定义行为
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部按钮组 -->
+    <div class="actions">
+      <button class="glass-button secondary" id="resetBtn"><i class="fa-regular fa-rotate-right"></i> 重置示例</button>
+      <button class="glass-button" id="checkBtn"><i class="fa-regular fa-flask"></i> 执行液态检查</button>
+    </div>
+  </div>
+
+  <!-- CodeMirror 核心库（必须在外链引入） -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
+  <!-- 内联脚本：合并后的 JavaScript（已适配子路径 /cpp-analyzer） -->
+  <script>
+    (function() {
+      // 获取当前基础路径（用于 API 请求）
+      function getBasePath() {
+        let path = window.location.pathname;
+        if (path.endsWith('/')) {
+          path = path.slice(0, -1);
+        }
+        return path;
+      }
+      const BASE_PATH = getBasePath();
+
+      // 获取DOM元素
+      const textarea = document.getElementById('codeInput');
+      const issuesList = document.getElementById('issuesList');
+      const scoreDisplay = document.getElementById('scoreDisplay');
+      const gaugeRing = document.getElementById('gaugeRing');
+      const stdBadges = document.querySelectorAll('.std-item');
+      const checkBtn = document.getElementById('checkBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const runSimBtn = document.getElementById('runSimBtn');
+      const simOutput = document.getElementById('simOutput');
+      const cppVersionSelect = document.getElementById('cppVersion');
+      const compilerSelect = document.getElementById('compiler');
+      const darkModeToggle = document.getElementById('darkModeToggle');
+
+      // 初始化CodeMirror
+      const editor = CodeMirror.fromTextArea(textarea, {
+        lineNumbers: true,
+        mode: 'text/x-c++src',
+        theme: 'eclipse',
+        indentUnit: 4,
+        smartIndent: true,
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        viewportMargin: Infinity,
+      });
+      editor.setSize('auto', '300px');
+
+      // 默认代码
+      const DEFAULT_CODE = `#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    int* p = new int(42);
+    vector<int> v;
+    v.push_back(10);
+    cout << "value: " << *p << endl;
+    // 忘记 delete p
+    return 0;
+}`;
+
+      // ----- 深色模式切换 -----
+      function initDarkMode() {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (prefersDark) {
+          document.body.classList.add('dark-mode');
+          updateDarkIcon(true);
+        }
+      }
+
+      function updateDarkIcon(isDark) {
+        const icon = darkModeToggle.querySelector('i');
+        if (isDark) {
+          icon.className = 'fa-regular fa-moon';
+        } else {
+          icon.className = 'fa-regular fa-sun';
+        }
+      }
+
+      darkModeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        updateDarkIcon(isDark);
+      });
+
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (e.matches) {
+          document.body.classList.add('dark-mode');
+          updateDarkIcon(true);
+        } else {
+          document.body.classList.remove('dark-mode');
+          updateDarkIcon(false);
+        }
+      });
+
+      initDarkMode();
+
+      // ----- 调用后端API（已适配子路径）-----
+      async function analyzeCode(code, version, compiler) {
+        const response = await fetch(`${BASE_PATH}/api/analyze`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, version, compiler })
+        });
+        if (!response.ok) {
+          throw new Error(`API 请求失败: ${response.status}`);
+        }
+        return await response.json();
+      }
+
+      // 更新仪表盘
+      function updateGauge(score) {
+        const angle = (score / 100) * 360;
+        gaugeRing.style.background = `conic-gradient(from 120deg, #5aa9d9 0deg ${angle}deg, rgba(255,255,255,0.4) ${angle}deg 360deg)`;
+      }
+
+      // 更新标准徽章（基于用户选择的版本）
+      function updateStdBadges(selectedVersion) {
+        stdBadges.forEach(b => b.classList.remove('active'));
+        const versionNum = selectedVersion.replace('c++', '');
+        const order = ['11', '14', '17', '20', '23'];
+        order.forEach(v => {
+          if (parseInt(v) <= parseInt(versionNum)) {
+            document.querySelector(`[data-std="c++${v}"]`)?.classList.add('active');
+          }
+        });
+      }
+
+      // 渲染检查结果
+      async function renderCheck() {
+        const code = editor.getValue();
+        const version = cppVersionSelect.value;
+        const compiler = compilerSelect.value;
+
+        try {
+          const { issues, score } = await analyzeCode(code, version, compiler);
+          scoreDisplay.textContent = score;
+          updateGauge(score);
+
+          issuesList.innerHTML = '';
+          if (issues.length === 0) {
+            issuesList.innerHTML = '<li class="list-placeholder"><i class="fa-regular fa-circle-check" style="color:#1d6f2e;"></i> 未发现明显问题，代码强健</li>';
+          } else {
+            issues.forEach(issue => {
+              const li = document.createElement('li');
+              let iconColor = '';
+              if (issue.severity === 'high') iconColor = '#b63e32';
+              else if (issue.severity === 'medium') iconColor = '#bf8b2c';
+              else if (issue.severity === 'low') iconColor = '#2d6180';
+              else iconColor = '#1d6f2e';
+              li.innerHTML = `<i class="${issue.icon}" style="color: ${iconColor};"></i> <span>${issue.text}</span>`;
+              issuesList.appendChild(li);
+            });
+          }
+
+          updateStdBadges(version);
+        } catch (error) {
+          console.error('分析失败', error);
+          issuesList.innerHTML = `<li class="list-placeholder"><i class="fa-regular fa-circle-exclamation" style="color:#b63e32;"></i> 分析请求失败，请稍后重试</li>`;
+        }
+      }
+
+      // 模拟输出（仍保留前端解析，无需后端）
+      function simulateOutput(code) {
+        let output = '';
+        const coutRegex = /cout\s*<<\s*([^;]+);/g;
+        let match;
+        while ((match = coutRegex.exec(code)) !== null) {
+          let expr = match[1];
+          const stringMatches = expr.match(/"([^"\\]*(\\.[^"\\]*)*")/g);
+          if (stringMatches) {
+            stringMatches.forEach(s => {
+              let clean = s.substring(1, s.length-1).replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+              output += clean;
+            });
+          }
+          if (expr.includes('endl')) {
+            output += '\n';
+          }
+        }
+
+        const printfRegex = /printf\s*\(\s*"([^"\\]*(\\.[^"\\]*)*)"\s*[^)]*\);/g;
+        let pMatch;
+        while ((pMatch = printfRegex.exec(code)) !== null) {
+          let fmt = pMatch[1];
+          let clean = fmt.replace(/%[a-zA-Z]/g, '?').replace(/\\n/g, '\n');
+          output += clean;
+        }
+
+        if (output === '') {
+          output = '[模拟输出] 未检测到 cout 或 printf 语句。';
+        }
+        return output;
+      }
+
+      function runSimulation() {
+        const code = editor.getValue();
+        const simulated = simulateOutput(code);
+        simOutput.textContent = simulated || '（无输出）';
+      }
+
+      // 重置示例
+      function resetToDefault() {
+        editor.setValue(DEFAULT_CODE);
+        cppVersionSelect.value = 'c++17';
+        compilerSelect.value = 'gcc';
+        renderCheck();
+        runSimulation();
+      }
+
+      // 事件绑定
+      checkBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        renderCheck();
+      });
+
+      resetBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        resetToDefault();
+      });
+
+      runSimBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        runSimulation();
+      });
+
+      // 版本/编译器变化时重新检查
+      cppVersionSelect.addEventListener('change', renderCheck);
+      compilerSelect.addEventListener('change', renderCheck);
+
+      // 编辑器内容变化自动检查（防抖）
+      let timeoutId;
+      editor.on('change', () => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          renderCheck();
+        }, 500);
+      });
+
+      // 初始渲染
+      window.addEventListener('load', () => {
+        renderCheck();
+        runSimulation();
+      });
+    })();
+  </script>
+</body>
+</html>
