@@ -3,365 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>C++ 强壮性检查工具</title>
-  <!-- Inter 字体 & Font Awesome -->
+  <title>C++ 强壮性检查</title>
+  <!-- 字体与图标库 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <!-- CodeMirror 核心与 C++ 模式、主题 (简洁的 eclipse 主题适配玻璃质感) -->
+  <!-- CodeMirror 核心与 C++ 模式、主题 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/eclipse.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      min-height: 100vh;
-      background: radial-gradient(circle at 30% 30%, rgba(180, 220, 250, 0.6), rgba(220, 240, 255, 0.3) 60%, transparent 90%),
-                  linear-gradient(145deg, #d9e8f5 0%, #b5d0e8 100%);
-      background-attachment: fixed;
-      font-family: 'Inter', sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1.5rem;
-      backdrop-filter: blur(2px);
-    }
-
-    /* 主玻璃容器 */
-    .glass-panel {
-      width: 100%;
-      max-width: 1300px;  /* 稍宽以适应输出区域 */
-      background: rgba(255, 255, 255, 0.2);
-      backdrop-filter: blur(16px) saturate(180%);
-      -webkit-backdrop-filter: blur(16px) saturate(180%);
-      border-radius: 3.5rem 3.5rem 2.8rem 2.8rem;
-      box-shadow: 0 25px 50px -10px rgba(0, 30, 60, 0.25),
-                  inset 0 0 0 1px rgba(255, 255, 255, 0.7),
-                  inset 0 2px 5px rgba(255, 255, 255, 0.5);
-      padding: 2.2rem 2.5rem;
-      transition: all 0.3s ease;
-      border: 1px solid rgba(255,255,255,0.45);
-    }
-
-    .title-section {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1.8rem;
-      padding-bottom: 0.8rem;
-      border-bottom: 1px solid rgba(255,255,255,0.35);
-    }
-
-    .title-section h1 {
-      font-weight: 550;
-      font-size: 2.2rem;
-      letter-spacing: -0.02em;
-      background: linear-gradient(135deg, #1e3b5c, #18344b);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 0 2px 5px rgba(255,255,255,0.5);
-      flex: 1;
-    }
-
-    .code-badge {
-      background: rgba(255,255,255,0.3);
-      backdrop-filter: blur(8px);
-      padding: 0.5rem 1.2rem;
-      border-radius: 100px;
-      font-size: 1rem;
-      font-weight: 500;
-      color: #1f4970;
-      border: 1px solid rgba(255,255,255,0.7);
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* 两列布局调整：左侧代码+输出，右侧报告 */
-    .main-grid {
-      display: grid;
-      grid-template-columns: 1.8fr 1.2fr;
-      gap: 1.8rem;
-      margin: 1.2rem 0 1.8rem;
-    }
-
-    /* 左侧区域（编辑器 + 模拟输出） */
-    .left-col {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    /* CodeMirror 编辑器玻璃化包装 */
-    .code-wrapper {
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 2rem;
-      padding: 1.2rem;
-      box-shadow: inset 0 1px 3px rgba(255,255,255,0.8), 0 8px 20px rgba(0, 30, 50, 0.1);
-      backdrop-filter: blur(6px);
-      border: 1px solid rgba(255,255,255,0.6);
-    }
-
-    .code-header {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-      margin-bottom: 0.8rem;
-      color: #1e3e5c;
-      font-weight: 500;
-    }
-
-    .code-header i {
-      background: rgba(255,255,255,0.4);
-      border-radius: 50%;
-      padding: 0.5rem;
-      font-size: 1.2rem;
-    }
-
-    /* CodeMirror 自定义背景透明 */
-    .CodeMirror {
-      height: auto;
-      min-height: 280px;
-      background: rgba(255, 255, 255, 0.3) !important;
-      border-radius: 1.5rem;
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      font-size: 0.95rem;
-      border: 1.5px solid rgba(255,255,255,0.7);
-      backdrop-filter: blur(4px);
-      color: #092033;
-    }
-    .CodeMirror-gutters {
-      background: rgba(255,255,255,0.2) !important;
-      border-right: 1px solid rgba(255,255,255,0.3);
-      border-radius: 1.5rem 0 0 1.5rem;
-    }
-    .CodeMirror-linenumber {
-      color: #1f4a72 !important;
-    }
-    .cm-s-eclipse span.cm-keyword { color: #7f0055; font-weight: bold; }
-    .cm-s-eclipse span.cm-string { color: #2a00ff; }
-    .cm-s-eclipse span.cm-comment { color: #3f7f5f; }
-    .cm-s-eclipse span.cm-type { color: #7f0055; }
-    .cm-s-eclipse span.cm-preprocessor { color: #646464; }
-
-    /* 模拟输出卡片 */
-    .output-card {
-      background: rgba(255,255,255,0.15);
-      backdrop-filter: blur(12px);
-      border-radius: 2rem;
-      padding: 1.2rem 1.5rem;
-      box-shadow: 0 15px 30px -10px rgba(0,30,60,0.2), inset 0 1px 2px rgba(255,255,255,0.8);
-      border: 1px solid rgba(255,255,255,0.5);
-    }
-
-    .output-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 1rem;
-      color: #13324b;
-      font-weight: 550;
-      font-size: 1.1rem;
-    }
-
-    .output-content {
-      background: rgba(0, 20, 40, 0.1);
-      border-radius: 1.2rem;
-      padding: 1rem 1.3rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.9rem;
-      color: #0a2a3f;
-      border: 1px solid rgba(255,255,255,0.5);
-      min-height: 100px;
-      max-height: 150px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    /* 右侧结果卡片 (微调) */
-    .result-panel {
-      background: rgba(255,255,255,0.15);
-      backdrop-filter: blur(12px);
-      border-radius: 2.2rem;
-      padding: 1.8rem 1.5rem;
-      box-shadow: 0 15px 30px -10px rgba(0,30,60,0.2), inset 0 1px 2px rgba(255,255,255,0.8);
-      border: 1px solid rgba(255,255,255,0.5);
-      display: flex;
-      flex-direction: column;
-    }
-
-    .result-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 1.6rem;
-      color: #13324b;
-      font-weight: 550;
-      font-size: 1.25rem;
-    }
-
-    .gauge-container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(255,255,255,0.2);
-      padding: 1rem 1.5rem;
-      border-radius: 2rem;
-      margin-bottom: 1.8rem;
-      border: 1px solid rgba(255,255,255,0.5);
-    }
-
-    .strength-score {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .score-label {
-      font-size: 0.85rem;
-      opacity: 0.7;
-    }
-
-    .score-value {
-      font-size: 2.4rem;
-      font-weight: 600;
-      line-height: 1;
-      color: #092c44;
-      text-shadow: 0 2px 5px rgba(255,255,255,0.4);
-    }
-
-    .score-max {
-      font-size: 0.9rem;
-      opacity: 0.6;
-    }
-
-    .glowing-ring {
-      width: 55px;
-      height: 55px;
-      border-radius: 100%;
-      background: conic-gradient(from 120deg, #5aa9d9 0deg 270deg, rgba(255,255,255,0.4) 270deg 360deg);
-      border: 3px solid rgba(255,255,255,0.7);
-      box-shadow: 0 0 15px #7abfe0;
-      transform: rotate(-90deg);
-    }
-
-    .issues-list {
-      flex: 1;
-      list-style: none;
-      margin: 0.5rem 0 1.2rem;
-      max-height: 240px;
-      overflow-y: auto;
-      padding-right: 0.3rem;
-    }
-
-    .issues-list li {
-      background: rgba(255,255,255,0.25);
-      margin: 0.6rem 0;
-      padding: 0.75rem 1rem;
-      border-radius: 1.5rem;
-      font-size: 0.9rem;
-      font-weight: 450;
-      backdrop-filter: blur(2px);
-      border: 1px solid rgba(255,255,255,0.6);
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      color: #072334;
-    }
-
-    .standard-badge {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin: 1rem 0 1.4rem;
-    }
-
-    .std-item {
-      background: rgba(255,255,255,0.35);
-      backdrop-filter: blur(4px);
-      padding: 0.4rem 1.2rem;
-      border-radius: 40px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      border: 1px solid white;
-      color: #103853;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .std-item.active {
-      background: rgba(210, 240, 255, 0.7);
-      box-shadow: 0 0 12px #b5e0ff;
-    }
-
-    .actions {
-      display: flex;
-      gap: 1rem;
-      justify-content: flex-end;
-      margin-top: 0.5rem;
-    }
-
-    .glass-button {
-      background: rgba(255,255,255,0.3);
-      backdrop-filter: blur(12px);
-      border: 1.5px solid rgba(255,255,255,0.9);
-      padding: 0.9rem 2.2rem;
-      border-radius: 3rem;
-      font-weight: 600;
-      font-size: 1rem;
-      color: #07263e;
-      cursor: pointer;
-      transition: 0.2s;
-      box-shadow: 0 5px 15px rgba(0, 20, 40, 0.1);
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .glass-button:hover {
-      background: rgba(255,255,255,0.55);
-      border-color: white;
-      transform: scale(1.02);
-      box-shadow: 0 10px 25px rgba(0,40,70,0.2);
-    }
-
-    .glass-button.secondary {
-      background: rgba(220, 240, 255, 0.25);
-    }
-
-    .glass-button.small {
-      padding: 0.6rem 1.5rem;
-      font-size: 0.9rem;
-    }
-
-    .issues-list::-webkit-scrollbar {
-      width: 6px;
-    }
-    .issues-list::-webkit-scrollbar-track {
-      background: rgba(255,255,255,0.15);
-      border-radius: 20px;
-    }
-    .issues-list::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,0.7);
-      border-radius: 20px;
-    }
-
-    @media (max-width: 950px) {
-      .main-grid { grid-template-columns: 1fr; }
-    }
-  </style>
+  <!-- 自定义样式 -->
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="glass-panel">
+    <!-- 标题行 -->
     <div class="title-section">
       <h1><i class="fa-regular fa-cube" style="margin-right: 12px;"></i>C++ 强健性检查</h1>
       <div class="code-badge">
@@ -369,18 +25,45 @@
       </div>
     </div>
 
+    <!-- 设置栏：版本、编译器、深色模式 -->
+    <div class="settings-bar">
+      <div class="setting-item">
+        <label for="cppVersion"><i class="fa-regular fa-code-branch"></i> C++版本</label>
+        <select id="cppVersion" class="glass-select">
+          <option value="c++11">C++11</option>
+          <option value="c++14">C++14</option>
+          <option value="c++17" selected>C++17</option>
+          <option value="c++20">C++20</option>
+          <option value="c++23">C++23</option>
+        </select>
+      </div>
+      <div class="setting-item">
+        <label for="compiler"><i class="fa-regular fa-microchip"></i> 编译器</label>
+        <select id="compiler" class="glass-select">
+          <option value="gcc" selected>GCC</option>
+          <option value="clang">Clang</option>
+          <option value="msvc">MSVC</option>
+        </select>
+      </div>
+      <div class="setting-item dark-toggle">
+        <label for="darkModeToggle"><i class="fa-regular fa-moon"></i> 深色模式</label>
+        <button id="darkModeToggle" class="glass-icon-btn" aria-label="切换深色模式">
+          <i class="fa-regular fa-sun"></i>
+        </button>
+      </div>
+    </div>
+
     <!-- 主网格：左侧（编辑器+输出），右侧报告 -->
     <div class="main-grid">
       <!-- 左侧列 -->
       <div class="left-col">
-        <!-- 代码编辑器区域（已替换为 CodeMirror） -->
+        <!-- 代码编辑器区域 -->
         <div class="code-wrapper">
           <div class="code-header">
             <i class="fa-regular fa-keyboard"></i> <span>源代码</span>
-            <span style="flex:1; text-align: right; font-size: 0.85rem; opacity:0.6;">C++17 / C++20</span>
+            <span style="flex:1; text-align: right; font-size: 0.85rem; opacity:0.6;">实时检查</span>
           </div>
-          <!-- 原来的 textarea 被 CodeMirror 替换，但保留作为备胎，实际由 JS 隐藏并构建编辑器 -->
-          <textarea id="codeInput" style="display: none;">#include &lt;iostream&gt;
+          <textarea id="codeInput">#include &lt;iostream&gt;
 #include &lt;vector&gt;
 using namespace std;
 
@@ -404,7 +87,7 @@ int main() {
         </div>
       </div>
 
-      <!-- 右侧报告面板（与之前相同，但调整了部分尺寸） -->
+      <!-- 右侧报告面板 -->
       <div class="result-panel">
         <div class="result-header">
           <i class="fa-regular fa-clipboard"></i> 检查报告
@@ -436,272 +119,16 @@ int main() {
       </div>
     </div>
 
-    <!-- 底部按钮组（保留检查与重置） -->
+    <!-- 底部按钮组 -->
     <div class="actions">
       <button class="glass-button secondary" id="resetBtn"><i class="fa-regular fa-rotate-right"></i> 重置示例</button>
-      <button class="glass-button" id="checkBtn"><i class="fa-regular fa-flask"></i> 执行液态检查</button>
+      <button class="glass-button" id="checkBtn"><i class="fa-regular fa-flask"></i> 执行检查</button>
     </div>
   </div>
 
-  <script>
-    (function() {
-      // --- 初始化 CodeMirror ---
-      const textarea = document.getElementById('codeInput');
-      const editor = CodeMirror.fromTextArea(textarea, {
-        lineNumbers: true,
-        mode: 'text/x-c++src',
-        theme: 'eclipse',
-        indentUnit: 4,
-        smartIndent: true,
-        matchBrackets: true,
-        autoCloseBrackets: true,
-        extraKeys: {"Ctrl-Space": "autocomplete"},
-        viewportMargin: Infinity,   // 适应高度
-      });
-      editor.setSize('auto', '300px'); // 设置合适高度
-
-      // --- 获取 DOM 元素 ---
-      const issuesList = document.getElementById('issuesList');
-      const scoreDisplay = document.getElementById('scoreDisplay');
-      const gaugeRing = document.getElementById('gaugeRing');
-      const stdBadges = document.querySelectorAll('.std-item');
-      const checkBtn = document.getElementById('checkBtn');
-      const resetBtn = document.getElementById('resetBtn');
-      const runSimBtn = document.getElementById('runSimBtn');
-      const simOutput = document.getElementById('simOutput');
-
-      // 默认代码（与 textarea 初始相同）
-      const DEFAULT_CODE = `#include <iostream>
-#include <vector>
-using namespace std;
-
-int main() {
-    int* p = new int(42);
-    vector<int> v;
-    v.push_back(10);
-    cout << "value: " << *p << endl;
-    // 忘记 delete p
-    return 0;
-}`;
-
-      // ----- 强壮性分析引擎 (同前，但使用 editor.getValue() ) -----
-      function analyzeCode(code) {
-        const issues = [];
-        let totalScore = 100;
-
-        // 规则1: 裸new无delete
-        if ((code.match(/new\s+\w+/g) || []).length > 0) {
-          const deleteCount = (code.match(/delete/g) || []).length;
-          const newCount = (code.match(/new\s+[a-zA-Z_]/g) || []).length;
-          if (newCount > deleteCount && !code.includes('shared_ptr') && !code.includes('unique_ptr')) {
-            issues.push({ icon: 'fa-regular fa-droplet', text: '内存泄漏风险: 存在 raw new 无对应 delete', severity: 'high' });
-            totalScore -= 18;
-          }
-        }
-
-        // 规则2: vector 频繁 push_back 但未 reserve
-        if (code.includes('vector<') && !code.includes('reserve(') && code.includes('push_back')) {
-          issues.push({ icon: 'fa-regular fa-clock', text: 'vector 频繁 push_back 但未 reserve, 可能引起多次重分配及异常安全削弱', severity: 'medium' });
-          totalScore -= 8;
-        }
-
-        // 规则3: using namespace std;
-        if (code.includes('using namespace std;')) {
-          issues.push({ icon: 'fa-regular fa-circle-exclamation', text: '使用了 using namespace std; (可能引起命名空间冲突，降低代码健壮性)', severity: 'low' });
-          totalScore -= 6;
-        }
-
-        // 规则4: 异常处理检查
-        if (code.includes('throw') && !code.includes('catch') ) {
-          issues.push({ icon: 'fa-regular fa-bug', text: '存在throw但缺少catch块，异常可能未被妥善处理', severity: 'medium' });
-          totalScore -= 12;
-        } else if (!code.includes('catch') && (code.includes('new ') || code.includes('fopen'))) {
-          issues.push({ icon: 'fa-regular fa-shield', text: '资源分配无异常处理保证，建议使用RAII包装', severity: 'low' });
-          totalScore -= 5;
-        }
-
-        // 规则5: 迭代器失效风险
-        if (code.includes('for') && code.includes('push_back') && code.includes('begin()')) {
-          issues.push({ icon: 'fa-regular fa-triangle-exclamation', text: '循环中修改容器可能导致迭代器失效 (需谨慎)', severity: 'medium' });
-          totalScore -= 10;
-        }
-
-        // 规则6: C 风格 I/O
-        if (code.match(/printf\(|scanf\(/)) {
-          issues.push({ icon: 'fa-regular fa-flag', text: '使用了 C 风格 I/O (建议使用 iostream 增加类型安全)', severity: 'low' });
-          totalScore -= 5;
-        }
-
-        // 规则7: NULL 而非 nullptr
-        if (code.includes('NULL') && !code.includes('nullptr')) {
-          issues.push({ icon: 'fa-regular fa-circle', text: '使用了 NULL 而非 nullptr (C++11 推荐)', severity: 'low' });
-          totalScore -= 3;
-        }
-
-        // 规则8: 未初始化指针
-        if (code.includes('int* p;') && !code.includes('= nullptr') && !code.includes('new')) {
-          issues.push({ icon: 'fa-regular fa-question', text: '指针未初始化或赋予有效地址', severity: 'high' });
-          totalScore -= 15;
-        }
-
-        // 规则9: 潜在的除零（演示）
-        if (code.includes('/') && (code.includes('x = 0') || code.includes('y = 0'))) {
-          issues.push({ icon: 'fa-regular fa-calculator', text: '存在可能除零的赋值，请检查算术安全', severity: 'medium' });
-          totalScore -= 8;
-        }
-
-        totalScore = Math.max(12, Math.min(99, totalScore));
-
-        if (issues.length === 0) {
-          issues.push({ icon: 'fa-regular fa-thumbs-up', text: '代码看起来强健，符合常见最佳实践', severity: 'good' });
-        } else {
-          issues.sort((a, b) => {
-            const w = { high: 3, medium: 2, low: 1, good: 0 };
-            return (w[b.severity] || 0) - (w[a.severity] || 0);
-          });
-        }
-
-        return { issues, score: totalScore };
-      }
-
-      // 更新仪表盘
-      function updateGauge(score) {
-        const angle = (score / 100) * 360;
-        gaugeRing.style.background = `conic-gradient(from 120deg, #5aa9d9 0deg ${angle}deg, rgba(255,255,255,0.4) ${angle}deg 360deg)`;
-      }
-
-      // 更新标准徽章
-      function updateStdBadges(code) {
-        stdBadges.forEach(b => b.classList.remove('active'));
-
-        const cpp11Features = ['nullptr', 'auto', 'range-based', 'initializer_list', 'static_assert', 'override', 'final'].some(f => code.includes(f));
-        const cpp14Features = ['make_unique', 'generic lambda', '[[deprecated]]', 'digit separators'].some(f => code.includes(f));
-        const cpp17Features = ['std::optional', 'std::variant', 'if constexpr', 'structured binding', 'fold expression', '[[maybe_unused]]', 'std::filesystem'].some(f => code.includes(f));
-        const cpp20Features = ['concept', 'requires', 'std::span', 'constexpr vector', 'constexpr string', 'coroutine', 'co_await', 'co_yield', 'co_return', 'operator<=>', 'char8_t'].some(f => code.includes(f));
-
-        document.querySelector('[data-std="c++11"]').classList.add('active');
-        if (cpp14Features || code.includes('make_unique')) document.querySelector('[data-std="c++14"]').classList.add('active');
-        if (cpp17Features || code.includes('std::optional') || code.includes('std::variant')) document.querySelector('[data-std="c++17"]').classList.add('active');
-        if (cpp20Features) document.querySelector('[data-std="c++20"]').classList.add('active');
-        
-        if (!cpp11Features && !code.includes('nullptr') && !code.includes('auto') && !code.includes('static_assert')) {
-          document.querySelector('[data-std="c++11"]').classList.remove('active');
-        }
-      }
-
-      // 渲染检查结果
-      function renderCheck() {
-        const code = editor.getValue();
-        const { issues, score } = analyzeCode(code);
-
-        scoreDisplay.textContent = score;
-        updateGauge(score);
-
-        issuesList.innerHTML = '';
-        if (issues.length === 0) {
-          issuesList.innerHTML = '<li class="list-placeholder"><i class="fa-regular fa-circle-check"></i> 未发现明显问题，代码强健</li>';
-        } else {
-          issues.forEach(issue => {
-            const li = document.createElement('li');
-            let iconColor = '';
-            if (issue.severity === 'high') iconColor = '#b63e32';
-            else if (issue.severity === 'medium') iconColor = '#bf8b2c';
-            else if (issue.severity === 'low') iconColor = '#2d6180';
-            else iconColor = '#1d6f2e';
-            li.innerHTML = `<i class="${issue.icon}" style="color: ${iconColor};"></i> <span>${issue.text}</span>`;
-            issuesList.appendChild(li);
-          });
-        }
-
-        updateStdBadges(code);
-      }
-
-      // --- 模拟运行：解析 cout 和 printf 语句，生成模拟输出 ---
-      function simulateOutput(code) {
-        let output = '';
-        // 匹配 cout << ... (简单版，不处理复杂的表达式)
-        const coutRegex = /cout\s*<<\s*([^;]+);/g;
-        let match;
-        while ((match = coutRegex.exec(code)) !== null) {
-          let expr = match[1];
-          // 提取字符串字面量 "..." 或 字符/数字
-          const stringMatches = expr.match(/"([^"\\]*(\\.[^"\\]*)*")/g);  // 基础字符串捕获
-          if (stringMatches) {
-            stringMatches.forEach(s => {
-              // 去掉引号，并处理转义（简化）
-              let clean = s.substring(1, s.length-1).replace(/\\n/g, '\n').replace(/\\t/g, '\t');
-              output += clean;
-            });
-          }
-          // 检测 endl
-          if (expr.includes('endl')) {
-            output += '\n';
-          }
-        }
-
-        // 匹配 printf
-        const printfRegex = /printf\s*\(\s*"([^"\\]*(\\.[^"\\]*)*)"\s*[^)]*\);/g;
-        let pMatch;
-        while ((pMatch = printfRegex.exec(code)) !== null) {
-          let fmt = pMatch[1];
-          // 简单移除格式说明符（演示用，忽略参数）
-          let clean = fmt.replace(/%[a-zA-Z]/g, '?').replace(/\\n/g, '\n');
-          output += clean;
-        }
-
-        if (output === '') {
-          // 如果什么都没匹配到，给个提示
-          output = '[模拟输出] 未检测到 cout 或 printf 语句。';
-        }
-        return output;
-      }
-
-      // 点击模拟运行按钮
-      function runSimulation() {
-        const code = editor.getValue();
-        const simulated = simulateOutput(code);
-        simOutput.textContent = simulated || '（无输出）';
-      }
-
-      // 重置示例
-      function resetToDefault() {
-        editor.setValue(DEFAULT_CODE);
-        renderCheck();
-        runSimulation(); // 同时更新模拟输出
-      }
-
-      // 绑定事件
-      checkBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        renderCheck();
-      });
-
-      resetBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        resetToDefault();
-      });
-
-      runSimBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        runSimulation();
-      });
-
-      // 编辑器内容改变时，自动重新检查（防抖）
-      let timeoutId;
-      editor.on('change', () => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          renderCheck();
-        }, 500);
-      });
-
-      // 初始渲染
-      window.addEventListener('load', () => {
-        renderCheck();
-        runSimulation();  // 显示初始模拟输出
-      });
-
-    })();
-  </script>
+  <!-- 脚本 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
